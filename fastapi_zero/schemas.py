@@ -13,7 +13,7 @@ class UserSchema(BaseModel):
 
 class UserPublic(BaseModel):
     username: str
-    email: str
+    email: EmailStr
     id: int
 
 
