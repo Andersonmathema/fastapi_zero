@@ -1,8 +1,11 @@
 from http import HTTPStatus
+
 from fastapi import Depends, FastAPI, HTTPException
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from fastapi_zero.database import get_session
 from fastapi_zero.models import User
-
 from fastapi_zero.schemas import (
     Message,
     UserDB,
@@ -10,8 +13,6 @@ from fastapi_zero.schemas import (
     UserPublic,
     UserSchema,
 )
-
-from sqlalchemy import select
 
 app = FastAPI(title='Minha API')
 
@@ -24,30 +25,27 @@ def read_root():
 
 
 @app.post('/users/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
-def create_user(user: UserSchema, session = Depends(get_session)):
-       
-
+def create_user(user: UserSchema, session: Session = Depends(get_session)):
     db_user = session.scalar(
-        select(User).where(User.username == user.username or User.email == user.email)
+        select(User).where(
+            User.username == user.username or User.email == user.email
+        )
     )
     if db_user:
         # Retornar erro
         if db_user.username == user.username:
             raise HTTPException(
-                status_code= HTTPStatus.CONFLICT,
-                detail='Username already exists'
+                status_code=HTTPStatus.CONFLICT,
+                detail='Username already exists',
             )
         elif db_user.email == user.email:
             raise HTTPException(
-                status_code= HTTPStatus.CONFLICT,
-                detail='Email already exists'
+                status_code=HTTPStatus.CONFLICT, detail='Email already exists'
             )
 
     # Se não der erro
     db_user = User(
-        username=user.username,
-        email=user.email,
-        password=user.password    
+        username=user.username, email=user.email, password=user.password
     )
 
     session.add(db_user)
@@ -58,8 +56,11 @@ def create_user(user: UserSchema, session = Depends(get_session)):
 
 
 @app.get('/users/', status_code=HTTPStatus.OK, response_model=UserList)
-def read_users():
-    return {'users': database}
+def read_users(
+    limit: int = 10, offset: int = 0, session: Session = Depends(get_session)
+):
+    users = session.scalars(select(User).limit(limit).offset(offset))
+    return {'users': users}
 
 
 @app.put(
